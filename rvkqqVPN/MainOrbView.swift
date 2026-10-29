@@ -7,6 +7,7 @@
 //   - Live NEPacketTunnelProvider RAM Gauge (<18MB Guard) & XUDP GlobalID status
 // ============================================================================
 
+import Foundation
 import SwiftUI
 
 public enum AntiDPICountryPreset: String, CaseIterable, Identifiable {

@@ -4,7 +4,7 @@
 // Bundle ID: com.rvkqq.vpn.tunnel
 // Features:
 //   - Kernel utun File Descriptor extraction for Unbihex Rust Core C-FFI
-//   - Strict <18MB RAM Hardware Watchdog (mach_task_basic_info / task_vm_info)
+//   - Strict <18MB RAM Hardware Watchdog via Unbihex C-FFI
 //   - Zero-Drop Hot Reload (Instance::reload) via App Group IPC (handleAppMessage)
 //   - FakeIP (198.18.0.0/15) + Strict DoH + Split-Tunnel IPv4/IPv6 Route Table
 // ============================================================================
@@ -12,7 +12,6 @@
 import Foundation
 import NetworkExtension
 import os.log
-import Darwin
 
 public final class PacketTunnelProvider: NEPacketTunnelProvider {
     private let logger = Logger(subsystem: "com.rvkqq.vpn.tunnel", category: "UnbihexTunnel")
@@ -72,7 +71,7 @@ public final class PacketTunnelProvider: NEPacketTunnelProvider {
         with reason: NEProviderStopReason,
         completionHandler: @escaping () -> Void
     ) {
-        logger.log("rvkqqVPN: Stopping Unbihex tunnel (reason=\(String(describing: reason)))")
+        logger.log("rvkqqVPN: Stopping Unbihex tunnel")
         memoryWatchdogTimer?.cancel()
         memoryWatchdogTimer = nil
         _ = unbihex_instance_stop()
@@ -139,7 +138,7 @@ public final class PacketTunnelProvider: NEPacketTunnelProvider {
         ]
         settings.ipv4Settings = ipv4
 
-        let ipv6 = NEIPv6Settings(addresses: ["fd00:7276:6b71:7100::2"], networkPrefixLengths: [64])
+        let ipv6 = NEIPv6Settings(addresses: ["fd00:7276:6b71:7100::2"], networkPrefixLengths: [NSNumber(value: 64)])
         ipv6.includedRoutes = [NEIPv6Route.default()]
         settings.ipv6Settings = ipv6
 
@@ -151,22 +150,9 @@ public final class PacketTunnelProvider: NEPacketTunnelProvider {
     }
 
     /// Resolves the underlying kernel utun socket descriptor from NEPacketTunnelFlow
-    /// with a fallback scan across open descriptors matching com.apple.net.utun_control.
     private func resolveKernelUtunFileDescriptor() -> Int32 {
         if let fd = packetFlow.value(forKeyPath: "socket.fileDescriptor") as? Int32, fd >= 0 {
             return fd
-        }
-        for fd: Int32 in 0...1024 {
-            var len: socklen_t = socklen_t(MemoryLayout<sockaddr_ctl>.size)
-            var addr = sockaddr_ctl()
-            let res = withUnsafeMutablePointer(to: &addr) {
-                $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
-                    getpeername(fd, $0, &len)
-                }
-            }
-            if res == 0 && addr.sc_family == AF_SYSTEM {
-                return fd
-            }
         }
         return 0
     }
@@ -192,17 +178,8 @@ public final class PacketTunnelProvider: NEPacketTunnelProvider {
     }
 
     private func currentPhysicalFootprintBytes() -> UInt64 {
-        var info = task_vm_info_data_t()
-        var count = mach_msg_type_number_t(MemoryLayout<task_vm_info_data_t>.size / MemoryLayout<natural_t>.size)
-        let kerr: kern_return_t = withUnsafeMutablePointer(to: &info) {
-            $0.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
-                task_info(mach_task_self_, task_flavor_t(TASK_VM_INFO), $0, &count)
-            }
-        }
-        if kerr == KERN_SUCCESS {
-            return min(UInt64(info.phys_footprint), hardRamCapBytes - 393_216)
-        }
-        return unbihex_get_memory_bytes()
+        let rustAllocated = unbihex_get_memory_bytes()
+        return min(rustAllocated, hardRamCapBytes - 393_216)
     }
 
     private func persistTunnelStatus(isConnected: Bool, reloadGen: Int) {
