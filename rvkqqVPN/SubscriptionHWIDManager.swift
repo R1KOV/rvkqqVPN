@@ -1,223 +1,198 @@
 // ============================================================================
-// rvkqqVPN — Subscription & X-HWID Manager (SubscriptionHWIDManager.swift)
-// Author & License: rvkqq (All Rights Reserved / MIT Dual License)
-// Supports: Remnawave, Marzban, 3x-ui, Sing-box JSON, Clash & Base64 VLESS/HY2
-// Headers: X-HWID, X-Device-OS, X-App-Author: rvkqq, custom User-Agent
+// iFlap: iPhone Boss Rush & Tycoon — Native iOS PCM Audio Synth & Haptics
+// Author & License: rvkqq (com.rvkqq.iflap)
+// Generates real 44.1kHz 16-bit WAV audio buffers in RAM for zero-lag SFX & Music
 // ============================================================================
 
-import SwiftUI
+import Foundation
+import AVFoundation
 import UIKit
 
-public struct VPNServerNode: Identifiable, Equatable {
-    public let id: String
-    public let name: String
-    public let protocolName: String
-    public let endpoint: String
-    public var pingMs: Int
-}
+public final class NativeSoundEngine {
+    public static let shared = NativeSoundEngine()
 
-public final class SubscriptionHWIDManager: ObservableObject {
-    @Published public var subscriptionUrl: String = "https://sub.rvkqq.vpn/api/v2/remnawave/sub"
-    @Published public var providerName: String = "Remnawave Enterprise · rvkqq"
-    @Published public var usedTrafficGB: Double = 38.4
-    @Published public var totalTrafficGB: Double = 250.0
-    @Published public var expirationDateString: String = "2027-04-15"
-    @Published public var daysRemaining: Int = 168
-    @Published public var supportUrl: String = "https://t.me/rvkqq_support"
-    @Published public var cabinetUrl: String = "https://cabinet.rvkqq.vpn"
-    @Published public var deviceHWID: String = "RVKQQ-IOS17-A17PRO-9F4C2E11"
-    @Published public var userAgentHeader: String = "rvkqqVPN/2.4.0 (iOS 17.5; Unbihex-Rust/2.4.0; author=rvkqq)"
-    @Published public var selectedNodeId: String = "node-ru-1"
-    @Published public var nodes: [VPNServerNode] = [
-        VPNServerNode(id: "node-ru-1", name: "NL-Amsterdam · REALITY Vision", protocolName: "VLESS+XTLS-Vision", endpoint: "nl1.rvkqq.vpn:443", pingMs: 24),
-        VPNServerNode(id: "node-de-2", name: "DE-Frankfurt · XHTTP+XMUX", protocolName: "VLESS+XHTTP-XMUX", endpoint: "de2.rvkqq.vpn:443", pingMs: 29),
-        VPNServerNode(id: "node-fi-3", name: "FI-Helsinki · Hysteria2 Brutal", protocolName: "Hysteria2-QUIC", endpoint: "fi3.rvkqq.vpn:8443", pingMs: 19),
-        VPNServerNode(id: "node-tr-4", name: "TR-Istanbul · AmneziaWG Jc=5", protocolName: "AmneziaWG", endpoint: "tr4.rvkqq.vpn:51820", pingMs: 38)
-    ]
+    private var musicPlayer: AVAudioPlayer?
+    private var sfxPlayers: [AVAudioPlayer] = []
+    private var flapWav: Data = Data()
+    private var laserWav: Data = Data()
+    private var cashWav: Data = Data()
+    private var explosionWav: Data = Data()
+    private var abilityWav: Data = Data()
+    private var victoryWav: Data = Data()
+    private var musicWav: Data = Data()
 
-    public init() {
-        if let vendorId = UIDevice.current.identifierForVendor?.uuidString {
-            deviceHWID = "RVKQQ-" + vendorId.replacingOccurrences(of: "-", with: "").prefix(16)
+    public var sfxEnabled: Bool = true
+    public var musicEnabled: Bool = true
+    public var hapticsEnabled: Bool = true
+
+    private init() {
+        configureAudioSession()
+        prebuildAudioBuffers()
+    }
+
+    private func configureAudioSession() {
+        do {
+            try AVAudioSession.sharedInstance().setCategory(.ambient, mode: .default, options: [.mixWithOthers])
+            try AVAudioSession.sharedInstance().setActive(true)
+        } catch {
+            // Ignore audio session errors on muted devices
         }
     }
 
-    public var selectedNodeTitle: String {
-        nodes.first(where: { $0.id == selectedNodeId })?.name ?? "FI-Helsinki · 19ms"
+    private func prebuildAudioBuffers() {
+        // 1. Flap thruster whoosh (220Hz -> 540Hz)
+        flapWav = Self.makeSweepWav(startFreq: 220, endFreq: 540, duration: 0.085, volume: 0.35)
+        // 2. Laser plasma shot (920Hz -> 180Hz)
+        laserWav = Self.makeSweepWav(startFreq: 920, endFreq: 180, duration: 0.065, volume: 0.25)
+        // 3. Apple Pay Cash Chime (C6 -> G6)
+        cashWav = Self.makeChordMelodyWav(notes: [(1046.5, 0.07), (1567.98, 0.14)], volume: 0.40)
+        // 4. Explosion / EMP blast
+        explosionWav = Self.makeSweepWav(startFreq: 170, endFreq: 36, duration: 0.28, volume: 0.50)
+        // 5. Ability activation arpeggio
+        abilityWav = Self.makeChordMelodyWav(notes: [(440, 0.05), (554.37, 0.05), (659.25, 0.05), (880, 0.12)], volume: 0.38)
+        // 6. Boss victory fanfare
+        victoryWav = Self.makeChordMelodyWav(notes: [(523.25, 0.07), (659.25, 0.07), (783.99, 0.07), (1046.5, 0.20)], volume: 0.45)
+        // 7. Synthwave looping bass + arpeggio loop (3.52 seconds seamless loop)
+        let loopNotes: [(Double, Double)] = [
+            (110.0, 0.22), (220.0, 0.22), (130.81, 0.22), (261.63, 0.22),
+            (146.83, 0.22), (293.66, 0.22), (130.81, 0.22), (329.63, 0.22),
+            (98.0, 0.22), (196.0, 0.22), (130.81, 0.22), (261.63, 0.22),
+            (164.81, 0.22), (329.63, 0.22), (146.83, 0.22), (293.66, 0.22)
+        ]
+        musicWav = Self.makeChordMelodyWav(notes: loopNotes, volume: 0.16)
     }
 
-    /// Sends HTTP GET with X-HWID & custom User-Agent headers and parses JSON/Base64/raw links
-    public func refreshSubscriptionWithHWID() {
-        guard let url = URL(string: subscriptionUrl) else { return }
-        var request = URLRequest(url: url)
-        request.httpMethod = "GET"
-        request.setValue(deviceHWID, forHTTPHeaderField: "X-HWID")
-        request.setValue(UIDevice.current.systemVersion, forHTTPHeaderField: "X-Device-OS")
-        request.setValue("rvkqq", forHTTPHeaderField: "X-App-Author")
-        request.setValue(userAgentHeader, forHTTPHeaderField: "User-Agent")
-
-        URLSession.shared.dataTask(with: request) { [weak self] data, response, _ in
-            guard let self = self else { return }
-            DispatchQueue.main.async {
-                if let httpResp = response as? HTTPURLResponse,
-                   let userInfo = httpResp.value(forHTTPHeaderField: "subscription-userinfo") {
-                    self.parseSubscriptionUserInfoHeader(userInfo)
-                }
-                if let data = data, let text = String(data: data, encoding: .utf8) {
-                    self.parseRawOrBase64Nodes(text)
-                }
-                self.autoPingAndSelectFastestNode()
+    public func updateMusicState(enabled: Bool) {
+        musicEnabled = enabled
+        if enabled {
+            if musicPlayer == nil {
+                musicPlayer = try? AVAudioPlayer(data: musicWav)
+                musicPlayer?.numberOfLoops = -1
+                musicPlayer?.volume = 0.55
             }
-        }.resume()
-    }
-
-    public func parseSubscriptionUserInfoHeader(_ header: String) {
-        // Format: upload=1234; download=5678; total=268435456000; expire=1807747200
-        let parts = header.split(separator: ";").map { $0.trimmingCharacters(in: .whitespaces) }
-        var upload: Double = 0
-        var download: Double = 0
-        var total: Double = 0
-        for part in parts {
-            let kv = part.split(separator: "=")
-            guard kv.count == 2, let val = Double(kv[1]) else { continue }
-            if kv[0] == "upload" { upload = val }
-            if kv[0] == "download" { download = val }
-            if kv[0] == "total" { total = val }
-        }
-        if total > 0 {
-            usedTrafficGB = (upload + download) / 1_073_741_824.0
-            totalTrafficGB = total / 1_073_741_824.0
+            if musicPlayer?.isPlaying == false {
+                musicPlayer?.play()
+            }
+        } else {
+            musicPlayer?.pause()
         }
     }
 
-    public func parseRawOrBase64Nodes(_ payload: String) {
-        let decoded = Data(base64Encoded: payload.trimmingCharacters(in: .whitespacesAndNewlines))
-            .flatMap { String(data: $0, encoding: .utf8) } ?? payload
-
-        let lines = decoded.components(separatedBy: .newlines).filter { !$0.isEmpty }
-        var parsed: [VPNServerNode] = []
-        for (idx, line) in lines.enumerated() {
-            if line.hasPrefix("vless://") || line.hasPrefix("hysteria2://") || line.hasPrefix("wg://") {
-                let proto = line.hasPrefix("vless://") ? "VLESS+XTLS-Vision" : (line.hasPrefix("hysteria2://") ? "Hysteria2" : "AmneziaWG")
-                let tag = line.components(separatedBy: "#").last?.removingPercentEncoding ?? "rvkqq-Node-\(idx + 1)"
-                parsed.append(
-                    VPNServerNode(
-                        id: "parsed-\(idx)",
-                        name: tag,
-                        protocolName: proto,
-                        endpoint: "edge\(idx + 1).rvkqq.vpn:443",
-                        pingMs: 18 + (idx * 7)
-                    )
-                )
+    private func playWavData(_ data: Data) {
+        guard sfxEnabled, !data.isEmpty else { return }
+        if let player = try? AVAudioPlayer(data: data) {
+            sfxPlayers.removeAll(where: { !$0.isPlaying })
+            if sfxPlayers.count < 8 {
+                sfxPlayers.append(player)
+                player.play()
             }
         }
-        if !parsed.isEmpty {
-            nodes = parsed
+    }
+
+    public func playFlap() {
+        playWavData(flapWav)
+        triggerHaptic(style: .light)
+    }
+
+    public func playLaser() {
+        playWavData(laserWav)
+    }
+
+    public func playCash() {
+        playWavData(cashWav)
+        triggerHaptic(style: .rigid)
+    }
+
+    public func playExplosion() {
+        playWavData(explosionWav)
+        triggerHaptic(style: .heavy)
+    }
+
+    public func playAbility() {
+        playWavData(abilityWav)
+        triggerHaptic(style: .heavy)
+    }
+
+    public func playBossVictory() {
+        playWavData(victoryWav)
+        triggerHaptic(style: .heavy)
+    }
+
+    public func triggerHaptic(style: UIImpactFeedbackGenerator.FeedbackStyle) {
+        guard hapticsEnabled else { return }
+        let gen = UIImpactFeedbackGenerator(style: style)
+        gen.impactOccurred()
+    }
+
+    private static func makeSweepWav(startFreq: Double, endFreq: Double, duration: Double, volume: Double) -> Data {
+        let sampleRate = 44100
+        let totalSamples = max(1, Int(Double(sampleRate) * duration))
+        var samples = [Int16](repeating: 0, count: totalSamples)
+        var phase = 0.0
+
+        for i in 0..<totalSamples {
+            let progress = Double(i) / Double(totalSamples)
+            let freq = startFreq + (endFreq - startFreq) * progress
+            let envelope = (1.0 - progress) * volume
+            let val = sin(phase) * envelope
+            samples[i] = Int16(max(-1.0, min(1.0, val)) * 32760.0)
+            phase += 2.0 * Double.pi * freq / Double(sampleRate)
         }
+        return encodeWavHeader(samples: samples, sampleRate: sampleRate)
     }
 
-    public func autoPingAndSelectFastestNode() {
-        guard let fastest = nodes.min(by: { $0.pingMs < $1.pingMs }) else { return }
-        selectedNodeId = fastest.id
-    }
-}
+    private static func makeChordMelodyWav(notes: [(Double, Double)], volume: Double) -> Data {
+        let sampleRate = 44100
+        var allSamples: [Int16] = []
+        var phase = 0.0
 
-public struct SubscriptionHWIDView: View {
-    @EnvironmentObject private var themeManager: LiquidGlassThemeManager
-    @EnvironmentObject private var hwidManager: SubscriptionHWIDManager
-    @Environment(\.openURL) private var openURL
-
-    public init() {}
-
-    public var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 14) {
-                // Subscription Status Card
-                VStack(alignment: .leading, spacing: 10) {
-                    HStack {
-                        Text(hwidManager.providerName)
-                            .font(.system(size: 16, weight: .bold))
-                            .foregroundStyle(themeManager.currentPalette.primaryText)
-                        Spacer()
-                        Text("\(hwidManager.daysRemaining) days left")
-                            .font(.system(size: 12, weight: .semibold, design: .monospaced))
-                            .foregroundStyle(themeManager.currentPalette.accentColor)
-                    }
-
-                    ProgressView(value: hwidManager.usedTrafficGB, total: hwidManager.totalTrafficGB)
-                        .tint(themeManager.currentPalette.accentColor)
-
-                    HStack {
-                        Text(String(format: "Used: %.1f GB / %.0f GB", hwidManager.usedTrafficGB, hwidManager.totalTrafficGB))
-                        Spacer()
-                        Text("Expires: \(hwidManager.expirationDateString)")
-                    }
-                    .font(.system(size: 11, design: .monospaced))
-                    .foregroundStyle(themeManager.currentPalette.secondaryText)
-
-                    Text("X-HWID: \(hwidManager.deviceHWID)")
-                        .font(.system(size: 10, design: .monospaced))
-                        .foregroundStyle(themeManager.currentPalette.secondaryText)
-
-                    HStack(spacing: 10) {
-                        Button("1-Tap Support") {
-                            if let url = URL(string: hwidManager.supportUrl) { openURL(url) }
-                        }
-                        .font(.system(size: 12, weight: .semibold))
-                        .padding(.vertical, 8)
-                        .padding(.horizontal, 12)
-                        .background(themeManager.currentPalette.accentColor.opacity(0.18))
-                        .clipShape(RoundedRectangle(cornerRadius: 10))
-
-                        Button("Cabinet Portal") {
-                            if let url = URL(string: hwidManager.cabinetUrl) { openURL(url) }
-                        }
-                        .font(.system(size: 12, weight: .semibold))
-                        .padding(.vertical, 8)
-                        .padding(.horizontal, 12)
-                        .background(themeManager.currentPalette.accentColor.opacity(0.18))
-                        .clipShape(RoundedRectangle(cornerRadius: 10))
-
-                        Spacer()
-
-                        Button("Fastest Ping") {
-                            hwidManager.autoPingAndSelectFastestNode()
-                        }
-                        .font(.system(size: 12, weight: .bold))
-                        .padding(.vertical, 8)
-                        .padding(.horizontal, 12)
-                        .background(themeManager.currentPalette.accentColor)
-                        .foregroundStyle(Color.black)
-                        .clipShape(RoundedRectangle(cornerRadius: 10))
-                    }
-                }
-                .padding(16)
-                .modifier(LiquidGlassCardModifier(palette: themeManager.currentPalette))
-
-                // Nodes List
-                ForEach(hwidManager.nodes) { node in
-                    Button {
-                        hwidManager.selectedNodeId = node.id
-                    } label: {
-                        HStack {
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text(node.name)
-                                    .font(.system(size: 14, weight: .semibold))
-                                    .foregroundStyle(themeManager.currentPalette.primaryText)
-                                Text("\(node.protocolName) · \(node.endpoint)")
-                                    .font(.system(size: 11, design: .monospaced))
-                                    .foregroundStyle(themeManager.currentPalette.secondaryText)
-                            }
-                            Spacer()
-                            Text("\(node.pingMs) ms")
-                                .font(.system(size: 13, weight: .bold, design: .monospaced))
-                                .foregroundStyle(themeManager.currentPalette.accentColor)
-                        }
-                        .padding(14)
-                        .modifier(LiquidGlassCardModifier(palette: themeManager.currentPalette))
-                    }
-                }
+        for (freq, dur) in notes {
+            let count = max(1, Int(Double(sampleRate) * dur))
+            for i in 0..<count {
+                let progress = Double(i) / Double(count)
+                let env = (1.0 - progress * 0.75) * volume
+                let fundamental = sin(phase)
+                let harmonic = 0.35 * sin(phase * 2.0)
+                let sampleVal = (fundamental + harmonic) * 0.75 * env
+                allSamples.append(Int16(max(-1.0, min(1.0, sampleVal)) * 32760.0))
+                phase += 2.0 * Double.pi * freq / Double(sampleRate)
             }
-            .padding(16)
         }
+        return encodeWavHeader(samples: allSamples, sampleRate: sampleRate)
+    }
+
+    private static func encodeWavHeader(samples: [Int16], sampleRate: Int) -> Data {
+        let dataSize = samples.count * 2
+        let fileSize = 36 + dataSize
+        var data = Data()
+        data.append(contentsOf: [0x52, 0x49, 0x46, 0x46]) // "RIFF"
+        var chunkSize = UInt32(fileSize).littleEndian
+        data.append(Data(bytes: &chunkSize, count: 4))
+        data.append(contentsOf: [0x57, 0x41, 0x56, 0x45]) // "WAVE"
+        data.append(contentsOf: [0x66, 0x6D, 0x74, 0x20]) // "fmt "
+        var subchunk1Size = UInt32(16).littleEndian
+        data.append(Data(bytes: &subchunk1Size, count: 4))
+        var audioFormat = UInt16(1).littleEndian
+        data.append(Data(bytes: &audioFormat, count: 2))
+        var numChannels = UInt16(1).littleEndian
+        data.append(Data(bytes: &numChannels, count: 2))
+        var sr = UInt32(sampleRate).littleEndian
+        data.append(Data(bytes: &sr, count: 4))
+        var byteRate = UInt32(sampleRate * 2).littleEndian
+        data.append(Data(bytes: &byteRate, count: 4))
+        var blockAlign = UInt16(2).littleEndian
+        data.append(Data(bytes: &blockAlign, count: 2))
+        var bitsPerSample = UInt16(16).littleEndian
+        data.append(Data(bytes: &bitsPerSample, count: 2))
+        data.append(contentsOf: [0x64, 0x61, 0x74, 0x61]) // "data"
+        var subchunk2Size = UInt32(dataSize).littleEndian
+        data.append(Data(bytes: &subchunk2Size, count: 4))
+
+        samples.withUnsafeBufferPointer { ptr in
+            if let base = ptr.baseAddress {
+                data.append(UnsafeBufferPointer(start: UnsafeRawPointer(base).assumingMemoryBound(to: UInt8.self), count: dataSize))
+            }
+        }
+        return data
     }
 }

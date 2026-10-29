@@ -1,119 +1,153 @@
 // ============================================================================
-// rvkqqVPN — Global Anti-DPI & TLS Fragmentation Tuner (AntiDPIEngineView.swift)
-// Author & License: rvkqq (All Rights Reserved / MIT Dual License)
-// Features:
-//   - TLS ClientHello Slicing / Fragmentation Byte Sliders & Delay Interval
-//   - Exact Chrome HTTP/2 SETTINGS / WINDOW_UPDATE (6291456) + Custom GREASE
-//   - XHTTP (packet-up / stream-up / stream-one + XMUX) & XUDP Full Cone NAT
+// iFlap: iPhone Boss Rush & Tycoon — iPhone Showroom & Upgrade Workshop
+// Author & License: rvkqq (com.rvkqq.iflap)
 // ============================================================================
 
+import Foundation
 import SwiftUI
 
-public struct AntiDPIEngineView: View {
-    @EnvironmentObject private var themeManager: LiquidGlassThemeManager
-    @EnvironmentObject private var tunnelController: UnbihexTunnelController
-
-    private let xhttpModes = [
-        "packet-up + XMUX",
-        "stream-up + XMUX",
-        "stream-one + XMUX"
-    ]
+public struct IPhoneShopView: View {
+    @EnvironmentObject public var save: GameSaveManager
 
     public init() {}
 
     public var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 14) {
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("TLS ClientHello Slicing & Fragmentation")
-                        .font(.system(size: 15, weight: .bold))
-                        .foregroundStyle(themeManager.currentPalette.primaryText)
+            VStack(alignment: .leading, spacing: 12) {
+                Text("📱 Магазин iPhone (Все поколения)")
+                    .font(.system(size: 20, weight: .heavy, design: .rounded))
+                    .foregroundColor(.white)
 
-                    HStack {
-                        Text("Min Fragment Bytes")
-                        Spacer()
-                        Text("\(Int(tunnelController.tlsFragmentMinBytes)) B")
-                            .font(.system(size: 12, weight: .bold, design: .monospaced))
-                    }
+                Text("Покупай новые модели iPhone, чтобы увеличить множитель бабок, броню батареи и количество лазерных камер!")
                     .font(.system(size: 12))
-                    .foregroundStyle(themeManager.currentPalette.secondaryText)
+                    .foregroundColor(.gray)
 
-                    Slider(value: $tunnelController.tlsFragmentMinBytes, in: 2...64, step: 1)
-                        .tint(themeManager.currentPalette.accentColor)
+                ForEach(save.iphones) { item in
+                    let isOwned = save.ownedIphoneIds.contains(item.id)
+                    let isSelected = save.selectedIphoneId == item.id
 
-                    HStack {
-                        Text("Max Fragment Bytes")
-                        Spacer()
-                        Text("\(Int(tunnelController.tlsFragmentMaxBytes)) B")
-                            .font(.system(size: 12, weight: .bold, design: .monospaced))
-                    }
-                    .font(.system(size: 12))
-                    .foregroundStyle(themeManager.currentPalette.secondaryText)
-
-                    Slider(value: $tunnelController.tlsFragmentMaxBytes, in: 16...128, step: 1)
-                        .tint(themeManager.currentPalette.accentColor)
-
-                    HStack {
-                        Text("Inter-Fragment Jitter Delay")
-                        Spacer()
-                        Text("\(Int(tunnelController.tlsFragmentDelayMs)) ms")
-                            .font(.system(size: 12, weight: .bold, design: .monospaced))
-                    }
-                    .font(.system(size: 12))
-                    .foregroundStyle(themeManager.currentPalette.secondaryText)
-
-                    Slider(value: $tunnelController.tlsFragmentDelayMs, in: 1...30, step: 1)
-                        .tint(themeManager.currentPalette.accentColor)
-                }
-                .padding(16)
-                .modifier(LiquidGlassCardModifier(palette: themeManager.currentPalette))
-
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("XHTTP + XMUX & XUDP Full Cone NAT")
-                        .font(.system(size: 15, weight: .bold))
-                        .foregroundStyle(themeManager.currentPalette.primaryText)
-
-                    Picker("XHTTP Mode", selection: $tunnelController.xhttpMode) {
-                        ForEach(xhttpModes, id: \.self) { mode in
-                            Text(mode).tag(mode)
+                    HStack(spacing: 12) {
+                        // Mini iPhone Icon Preview
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(item.bodyColor)
+                                .frame(width: 42, height: 64)
+                            RoundedRectangle(cornerRadius: 6)
+                                .fill(item.accentColor.opacity(0.45))
+                                .frame(width: 36, height: 54)
                         }
-                    }
-                    .pickerStyle(.segmented)
 
-                    HStack {
-                        Text("Chrome H2 WINDOW_UPDATE")
-                        Spacer()
-                        Text("6,291,456 · GREASE 0x5A5A")
-                            .font(.system(size: 11, design: .monospaced))
-                            .foregroundStyle(themeManager.currentPalette.accentColor)
-                    }
-                    .font(.system(size: 12))
-                    .foregroundStyle(themeManager.currentPalette.secondaryText)
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack {
+                                Text("\(item.name) (\(String(item.year)))")
+                                    .font(.system(size: 15, weight: .bold))
+                                    .foregroundColor(.white)
+                                Spacer()
+                            }
 
-                    HStack {
-                        Text("XUDP GlobalID (Mux.Cool)")
-                        Spacer()
-                        Text(tunnelController.xudpGlobalID)
-                            .font(.system(size: 11, design: .monospaced))
-                            .foregroundStyle(themeManager.currentPalette.accentColor)
-                    }
-                    .font(.system(size: 12))
-                    .foregroundStyle(themeManager.currentPalette.secondaryText)
+                            Text(item.tagline)
+                                .font(.system(size: 11))
+                                .foregroundColor(.gray)
 
-                    Button {
-                        tunnelController.applyZeroDropReload(reason: "Anti-DPI Tuner Update")
-                    } label: {
-                        Text("Hot-Reload Unbihex (Instance::reload)")
-                            .font(.system(size: 13, weight: .bold))
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 10)
-                            .background(themeManager.currentPalette.accentColor)
-                            .foregroundStyle(Color.black)
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                            Text("💰 x\(String(format: "%.1f", item.cashMultiplier)) Кэш · 🔋 \(Int(item.baseHp)) ХП · 🔫 \(item.laserCount)х Лазер")
+                                .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                                .foregroundColor(.cyan)
+
+                            Text("✨ \(item.perkText)")
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundColor(.yellow)
+                        }
+
+                        Button(action: {
+                            save.buyOrSelectIphone(item)
+                        }) {
+                            Text(isSelected ? "ВЫБРАН" : (isOwned ? "ВЗЯТЬ" : "$\(item.price)"))
+                                .font(.system(size: 12, weight: .heavy, design: .monospaced))
+                                .foregroundColor(.black)
+                                .padding(.vertical, 10)
+                                .padding(.horizontal, 14)
+                                .background(
+                                    isSelected
+                                        ? Color.green
+                                        : (isOwned ? Color.cyan : (save.cash >= item.price ? Color.yellow : Color.gray))
+                                )
+                                .cornerRadius(10)
+                        }
+                        .disabled(!isOwned && save.cash < item.price)
                     }
+                    .padding(14)
+                    .background(Color(red: 0.08, green: 0.11, blue: 0.20))
+                    .cornerRadius(16)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .stroke(isSelected ? Color.green : Color.white.opacity(0.12), lineWidth: isSelected ? 2 : 1)
+                    )
                 }
-                .padding(16)
-                .modifier(LiquidGlassCardModifier(palette: themeManager.currentPalette))
+            }
+            .padding(16)
+        }
+    }
+}
+
+public struct UpgradeWorkshopView: View {
+    @EnvironmentObject public var save: GameSaveManager
+
+    public init() {}
+
+    public var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("⚡ Тюнинг и Прокачка Айфона")
+                    .font(.system(size: 20, weight: .heavy, design: .rounded))
+                    .foregroundColor(.white)
+
+                Text("Все улучшения работают постоянно на всех купленных айфонах!")
+                    .font(.system(size: 12))
+                    .foregroundColor(.gray)
+
+                ForEach(save.upgrades) { spec in
+                    let lvl = save.upgradeLevels[spec.id] ?? 0
+                    let cost = save.upgradeCost(for: spec)
+                    let isMax = lvl >= spec.maxLevel
+
+                    HStack(spacing: 12) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("\(spec.name) [Ур. \(lvl)/\(spec.maxLevel)]")
+                                .font(.system(size: 15, weight: .bold))
+                                .foregroundColor(.white)
+
+                            Text(spec.desc)
+                                .font(.system(size: 11))
+                                .foregroundColor(.gray)
+
+                            Text("Бонус: \(spec.bonusLabel) за уровень")
+                                .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                                .foregroundColor(.cyan)
+                        }
+
+                        Spacer()
+
+                        Button(action: {
+                            save.buyUpgrade(spec)
+                        }) {
+                            Text(isMax ? "МАКС" : "$\(cost)")
+                                .font(.system(size: 12, weight: .heavy, design: .monospaced))
+                                .foregroundColor(.black)
+                                .padding(.vertical, 10)
+                                .padding(.horizontal, 14)
+                                .background(isMax ? Color.green : (save.cash >= cost ? Color.cyan : Color.gray))
+                                .cornerRadius(10)
+                        }
+                        .disabled(isMax || save.cash < cost)
+                    }
+                    .padding(14)
+                    .background(Color(red: 0.08, green: 0.11, blue: 0.20))
+                    .cornerRadius(16)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .stroke(Color.cyan.opacity(0.22), lineWidth: 1)
+                    )
+                }
             }
             .padding(16)
         }

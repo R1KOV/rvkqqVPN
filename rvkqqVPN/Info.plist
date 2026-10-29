@@ -1,20 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<!--
-  rvkqqVPN — Host App Info.plist
-  Author & License: rvkqq
-  Bundle ID: com.rvkqq.vpn
--->
 <plist version="1.0">
 <dict>
   <key>CFBundleDevelopmentRegion</key>
-  <string>en</string>
+  <string>ru</string>
   <key>CFBundleDisplayName</key>
-  <string>rvkqqVPN</string>
+  <string>iFlap Боссы</string>
   <key>CFBundleExecutable</key>
-  <string>$(EXECUTABLE_NAME)</string>
+  <string>rvkqqVPN</string>
   <key>CFBundleIdentifier</key>
-  <string>com.rvkqq.vpn</string>
+  <string>com.rvkqq.iflap</string>
   <key>CFBundleInfoDictionaryVersion</key>
   <string>6.0</string>
   <key>CFBundleName</key>
@@ -22,46 +17,28 @@
   <key>CFBundlePackageType</key>
   <string>APPL</string>
   <key>CFBundleShortVersionString</key>
-  <string>2.4.0</string>
+  <string>3.0.0</string>
   <key>CFBundleVersion</key>
-  <string>240</string>
-  <key>NSHumanReadableCopyright</key>
-  <string>Copyright © 2026 rvkqq. Licensed under rvkqq Core Architecture License.</string>
-  <key>RVKQQAuthorSignature</key>
-  <string>rvkqq</string>
-  <key>RVKQQEngineCore</key>
-  <string>Unbihex-Rust-aarch64-apple-ios</string>
+  <string>300</string>
+  <key>MinimumOSVersion</key>
+  <string>15.0</string>
   <key>LSRequiresIPhoneOS</key>
   <true/>
   <key>CADisableMinimumFrameDurationOnPhone</key>
   <true/>
   <key>UIApplicationSupportsIndirectInputEvents</key>
   <true/>
+  <key>UIRequiresFullScreen</key>
+  <true/>
+  <key>UIStatusBarHidden</key>
+  <true/>
   <key>UILaunchScreen</key>
-  <dict>
-    <key>UIColorName</key>
-    <string>LaunchBackground</string>
-  </dict>
+  <dict/>
   <key>UISupportedInterfaceOrientations</key>
   <array>
     <string>UIInterfaceOrientationPortrait</string>
     <string>UIInterfaceOrientationLandscapeLeft</string>
     <string>UIInterfaceOrientationLandscapeRight</string>
-  </array>
-  <key>CFBundleURLTypes</key>
-  <array>
-    <dict>
-      <key>CFBundleTypeRole</key>
-      <string>Editor</string>
-      <key>CFBundleURLName</key>
-      <string>com.rvkqq.vpn.scheme</string>
-      <key>CFBundleURLSchemes</key>
-      <array>
-        <string>rvkqqvpn</string>
-        <string>vless</string>
-        <string>hysteria2</string>
-      </array>
-    </dict>
   </array>
 </dict>
 </plist>
