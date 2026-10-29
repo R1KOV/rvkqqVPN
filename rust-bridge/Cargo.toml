@@ -1,0 +1,28 @@
+# =============================================================================
+# rvkqqVPN — Unbihex Rust Core FFI Bridge Cargo Manifest
+# Author & License: rvkqq
+# Target: aarch64-apple-ios -> libunbihex.a (<18MB NEPacketTunnelProvider Cap)
+# =============================================================================
+
+[package]
+name = "unbihex-ffi"
+version = "2.4.0"
+authors = ["rvkqq <architect@rvkqq.vpn>"]
+license = "MIT"
+edition = "2021"
+description = "Pure Rust Unbihex C-FFI Engine for rvkqqVPN iOS NetworkExtension (<18MB RAM Cap)"
+
+[lib]
+name = "unbihex"
+crate-type = ["staticlib", "cdylib"]
+
+[dependencies]
+# Note: Build uses zero external native C dependencies so it compiles cleanly
+# out-of-the-box on macos-latest for aarch64-apple-ios without OpenSSL/cmake issues.
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = "symbols"

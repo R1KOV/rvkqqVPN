@@ -1,0 +1,123 @@
+# =============================================================================
+# rvkqqVPN — XcodeGen Project Specification
+# Author & License: rvkqq (MIT / Proprietary Dual-License by rvkqq)
+# Engine: Pure Rust Unbihex Core (libunbihex.a via C-FFI)
+# Targets:
+#   - rvkqqVPN (com.rvkqq.vpn) — 120Hz SwiftUI Liquid Glass Host Application
+#   - rvkqqVPNTunnel (com.rvkqq.vpn.tunnel) — <18MB NEPacketTunnelProvider
+# =============================================================================
+
+name: rvkqqVPN
+options:
+  bundleIdPrefix: com.rvkqq
+  deploymentTarget:
+    iOS: "17.0"
+  xcodeVersion: "16.0"
+  generateEmptyDirectories: true
+  createIntermediateGroups: true
+  defaultConfig: Release
+
+settings:
+  base:
+    MARKETING_VERSION: "2.4.0"
+    CURRENT_PROJECT_VERSION: "240"
+    SWIFT_VERSION: "5.10"
+    IPHONEOS_DEPLOYMENT_TARGET: "17.0"
+    ARCHS: "arm64"
+    VALID_ARCHS: "arm64"
+    ONLY_ACTIVE_ARCH: NO
+    ENABLE_BITCODE: NO
+    ENABLE_USER_SCRIPT_SANDBOXING: NO
+    AUTHOR_SIGNATURE: "rvkqq"
+    CODE_SIGN_IDENTITY: ""
+    CODE_SIGNING_REQUIRED: NO
+    CODE_SIGNING_ALLOWED: NO
+    AD_HOC_CODE_SIGNING_ALLOWED: YES
+    SWIFT_OPTIMIZATION_LEVEL: "-O"
+    GCC_OPTIMIZATION_LEVEL: "s"
+    DEAD_CODE_STRIPPING: YES
+
+targets:
+  rvkqqVPN:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: rvkqqVPN
+        excludes:
+          - "**/*.entitlements"
+          - "**/Info.plist"
+    resources:
+      - path: Resources/geosite.dat
+        optional: true
+      - path: Resources/geoip.dat
+        optional: true
+      - path: Resources/runetfreedom.srs
+        optional: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.rvkqq.vpn
+        PRODUCT_NAME: rvkqqVPN
+        INFOPLIST_FILE: rvkqqVPN/Info.plist
+        CODE_SIGN_ENTITLEMENTS: rvkqqVPN/rvkqqVPN.entitlements
+        SWIFT_OBJC_BRIDGING_HEADER: include/unbihex_ffi.h
+        HEADER_SEARCH_PATHS:
+          - "$(PROJECT_DIR)/include"
+        LIBRARY_SEARCH_PATHS:
+          - "$(PROJECT_DIR)/rust-bridge/target/aarch64-apple-ios/release"
+        OTHER_LDFLAGS:
+          - "-lunbihex"
+          - "-lc++"
+          - "-lresolv"
+          - "-framework"
+          - "NetworkExtension"
+          - "-framework"
+          - "Security"
+          - "-framework"
+          - "SystemConfiguration"
+          - "-framework"
+          - "QuartzCore"
+    dependencies:
+      - target: rvkqqVPNTunnel
+        embed: true
+
+  rvkqqVPNTunnel:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: rvkqqVPNTunnel
+        excludes:
+          - "**/*.entitlements"
+          - "**/Info.plist"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.rvkqq.vpn.tunnel
+        PRODUCT_NAME: rvkqqVPNTunnel
+        INFOPLIST_FILE: rvkqqVPNTunnel/Info.plist
+        CODE_SIGN_ENTITLEMENTS: rvkqqVPNTunnel/rvkqqVPNTunnel.entitlements
+        SWIFT_OBJC_BRIDGING_HEADER: include/unbihex_ffi.h
+        HEADER_SEARCH_PATHS:
+          - "$(PROJECT_DIR)/include"
+        LIBRARY_SEARCH_PATHS:
+          - "$(PROJECT_DIR)/rust-bridge/target/aarch64-apple-ios/release"
+        OTHER_LDFLAGS:
+          - "-lunbihex"
+          - "-lc++"
+          - "-lresolv"
+          - "-framework"
+          - "NetworkExtension"
+          - "-framework"
+          - "Network"
+          - "-framework"
+          - "Security"
+        APPLICATION_EXTENSION_API_ONLY: YES
+
+schemes:
+  rvkqqVPN:
+    build:
+      targets:
+        rvkqqVPN: all
+        rvkqqVPNTunnel: all
+    archive:
+      config: Release
